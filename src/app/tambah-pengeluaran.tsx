@@ -1,27 +1,85 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { colors } from "../components/uangku";
-import { amplopList } from "../data/amplop";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { colors } from "@/components/uangku";
+import { amplopService } from "@/api/amplop";
+import { pengeluaranService } from "@/api/pengeluaran";
 
 export default function TambahPengeluaranScreen() {
   const router = useRouter();
   const { category } = useLocalSearchParams<{ category?: string }>();
 
-  const [selected, setSelected] = useState(category ?? amplopList[0].id);
+  const [amplopList, setAmplopList] = useState<{ id: number; name: string }[]>(
+    []
+  );
+  const [selected, setSelected] = useState<number | null>(null);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await amplopService.list();
+        if (!cancelled) {
+          const list = (data.amplop || []).map((a: any) => ({
+            id: a.id,
+            name: a.name,
+          }));
+          setAmplopList(list);
+          // Pilih kategori yang dikirim dari parameter, atau yang pertama
+          const defaultId = category ? Number(category) : list[0]?.id ?? null;
+          setSelected(
+            list.find((a: { id: number }) => a.id === defaultId)?.id ??
+              list[0]?.id ??
+              null
+          );
+        }
+      } catch {
+        // Gagal memuat daftar amplop, biarkan kosong
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [category]);
+
+  const handleSave = async () => {
+    setError("");
+    if (!selected) {
+      setError("Pilih kategori terlebih dahulu.");
+      return;
+    }
     const nominal = Number(amount.replace(/\D/g, ""));
     if (!nominal) {
       setError("Isi jumlah pengeluaran dulu ya.");
       return;
     }
-    // TODO: simpan { selected, nominal, note } ke state global / database
-    router.back();
+
+    setSaving(true);
+    try {
+      await pengeluaranService.create({
+        amplop_id: selected,
+        catatan: note,
+        nominal,
+      } as any);
+      router.back();
+    } catch {
+      setError("Gagal menyimpan pengeluaran.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -43,7 +101,9 @@ export default function TambahPengeluaranScreen() {
               onPress={() => setSelected(a.id)}
               style={[styles.chip, active && styles.chipActive]}
             >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>{a.name}</Text>
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                {a.name}
+              </Text>
             </Pressable>
           );
         })}
@@ -73,8 +133,19 @@ export default function TambahPengeluaranScreen() {
         onChangeText={setNote}
       />
 
-      <Pressable style={styles.cta} onPress={handleSave}>
-        <Text style={styles.ctaText}>Simpan</Text>
+      <Pressable
+        style={[
+          styles.cta,
+          { backgroundColor: saving ? colors.muted : colors.primary },
+        ]}
+        onPress={handleSave}
+        disabled={saving}
+      >
+        {saving ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.ctaText}>Simpan</Text>
+        )}
       </Pressable>
     </ScrollView>
   );
@@ -100,4 +171,6 @@ const styles = StyleSheet.create({
 
   cta: { height: 48, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginTop: 28 },
   ctaText: { fontSize: 14, fontWeight: "700", color: colors.white },
+
+  center: { alignItems: "center", justifyContent: "center", paddingVertical: 60 },
 });

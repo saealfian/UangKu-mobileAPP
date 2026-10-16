@@ -1,12 +1,84 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { colors } from "../../components/uangku";
-import { pad, rupiah, semuaPengeluaran } from "../../data/amplop";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { colors } from "@/components/uangku";
+import { pad, rupiah } from "@/data/amplop";
+import { pengeluaranService } from "@/api/pengeluaran";
+
+type Expense = {
+  id: number;
+  day: number;
+  note: string;
+  amount: number;
+  category: string;
+  tanggal: string;
+};
 
 export default function CatatanScreen() {
   const router = useRouter();
-  const total = semuaPengeluaran.reduce((t, e) => t + e.amount, 0);
+
+  const [pengeluaranList, setPengeluaranList] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const now = new Date();
+  const bulan = now.getMonth() + 1;
+  const tahun = now.getFullYear();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await pengeluaranService.list({ bulan, tahun });
+        if (!cancelled) {
+          setPengeluaranList(
+            (data.pengeluaran || []).map((e: any) => ({
+              id: e.id,
+              day: e.day,
+              note: e.note,
+              amount: e.amount,
+              category: e.category || "-",
+              tanggal: e.tanggal,
+            }))
+          );
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(
+            err?.data?.message || err?.message || "Gagal memuat catatan."
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bulan, tahun]);
+
+  const total = pengeluaranList.reduce((t, e) => t + e.amount, 0);
+
+  if (loading) {
+    return (
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </ScrollView>
+    );
+  }
+
+  if (error) {
+    return (
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <View style={styles.center}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -16,10 +88,10 @@ export default function CatatanScreen() {
       <View style={[styles.row, styles.filterRow]}>
         <Pressable style={styles.pill}>
           <MaterialIcons name="calendar-today" size={13} color={colors.muted} />
-          <Text style={styles.pillText}>Oktober 2026</Text>
+          <Text style={styles.pillText}>{pad(bulan)}/{tahun}</Text>
           <MaterialIcons name="keyboard-arrow-down" size={16} color={colors.muted} />
         </Pressable>
-        <Text style={styles.small}>{semuaPengeluaran.length} pengeluaran</Text>
+        <Text style={styles.small}>{pengeluaranList.length} pengeluaran</Text>
       </View>
 
       {/* Tabel */}
@@ -30,13 +102,23 @@ export default function CatatanScreen() {
           <Text style={[styles.th, styles.colAmount]}>Jumlah</Text>
         </View>
 
-        {semuaPengeluaran.map((e, i) => (
-          <View key={i} style={[styles.tr, styles.trBody]}>
-            <Text style={[styles.dateText, styles.colDate]}>{pad(e.day)} Okt</Text>
-            <Text style={[styles.cell, styles.colCat]}>{e.category}</Text>
-            <Text style={[styles.cell, styles.colAmount]}>{rupiah(e.amount)}</Text>
+        {pengeluaranList.length === 0 ? (
+          <View style={[styles.tr, styles.trBody]}>
+            <Text style={[styles.cell, styles.colDate]}>-</Text>
+            <Text style={[styles.cell, styles.colCat]}>Belum ada catatan</Text>
+            <Text style={[styles.cell, styles.colAmount]}>-</Text>
           </View>
-        ))}
+        ) : (
+          pengeluaranList.map((e) => (
+            <View key={e.id} style={[styles.tr, styles.trBody]}>
+              <Text style={[styles.dateText, styles.colDate]}>
+                {pad(e.day)} Okt
+              </Text>
+              <Text style={[styles.cell, styles.colCat]}>{e.category}</Text>
+              <Text style={[styles.cell, styles.colAmount]}>{rupiah(e.amount)}</Text>
+            </View>
+          ))
+        )}
 
         <View style={[styles.tr, styles.tfoot]}>
           <Text style={styles.cell}>Total bulan ini</Text>
@@ -88,4 +170,7 @@ const styles = StyleSheet.create({
   addWrap: { alignItems: "center", marginTop: 24, gap: 8 },
   fab: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
   addLabel: { fontSize: 12, color: colors.primary },
+
+  center: { alignItems: "center", justifyContent: "center", paddingVertical: 60 },
+  errorText: { fontSize: 13, color: colors.danger, textAlign: "center" },
 });

@@ -1,19 +1,122 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { IconCircle, ProgressBar, colors } from "../../../components/uangku";
-import { amplopList, pad, rupiah, terpakai } from "../../../data/amplop";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { IconCircle, ProgressBar, colors } from "@/components/uangku";
+import { pad, rupiah } from "@/data/amplop";
+import { getIcon } from "@/data/icons";
+import { amplopService } from "@/api/amplop";
+
+type AmplopDetail = {
+  id: number;
+  name: string;
+  desc: string;
+  budget: number;
+  bg: string;
+  icon?: string;
+  terpakai?: number;
+  sisa?: number;
+};
+
+type Expense = {
+  id: number;
+  day: number;
+  note: string;
+  amount: number;
+  tanggal: string;
+  createdAt: string;
+};
 
 export default function DetailAmplopScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
 
-  // Ambil amplop sesuai id yang dikirim dari Beranda
-  const amplop = amplopList.find((a) => a.id === id) ?? amplopList[0];
-  const used = terpakai(amplop);
-  const sisa = amplop.budget - used;
-  const percent = (used / amplop.budget) * 100;
-  const expenses = [...amplop.expenses].sort((a, b) => b.day - a.day);
+  const [amplop, setAmplop] = useState<AmplopDetail | null>(null);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!id) return;
+      try {
+        const data = await amplopService.get(Number(id));
+        if (!cancelled) {
+          setAmplop({
+            id: data.amplop.id,
+            name: data.amplop.name,
+            desc: data.amplop.desc,
+            budget: data.amplop.budget,
+            bg: data.amplop.bg || colors.mint,
+            icon: data.amplop.icon,
+            terpakai: data.amplop.terpakai,
+            sisa: data.amplop.sisa,
+          });
+          setExpenses(
+            (data.expenses || []).map((e: any) => ({
+              id: e.id,
+              day: e.day,
+              note: e.note,
+              amount: e.amount,
+              tanggal: e.tanggal,
+              createdAt: e.createdAt,
+            }))
+          );
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(
+            err?.data?.message || err?.message || "Gagal memuat detail amplop."
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </ScrollView>
+    );
+  }
+
+  if (error || !amplop) {
+    return (
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <View style={styles.center}>
+          <Text style={styles.errorText}>
+            {error || "Data amplop tidak ditemukan."}
+          </Text>
+          <Pressable style={styles.back} onPress={() => router.back()}>
+            <Text style={styles.backText}>Kembali</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  const used = amplop.terpakai ?? 0;
+  const sisa = amplop.sisa ?? amplop.budget - used;
+  const percent = amplop.budget ? (used / amplop.budget) * 100 : 0;
+  const sortedExpenses = [...expenses].sort(
+    (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+  );
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -28,7 +131,7 @@ export default function DetailAmplopScreen() {
       {/* Info amplop */}
       <View style={styles.infoRow}>
         <View style={[styles.iconBox, { backgroundColor: amplop.bg }]}>
-          <IconCircle source={amplop.icon} />
+          <IconCircle source={getIcon(amplop.icon)} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.name}>{amplop.name}</Text>
@@ -61,28 +164,34 @@ export default function DetailAmplopScreen() {
       {/* Pengeluaran terbaru */}
       <View style={[styles.row, styles.sectionHeader]}>
         <Text style={styles.sectionTitle}>Pengeluaran terbaru</Text>
-        <Text style={styles.small}>{expenses.length} catatan</Text>
+        <Text style={styles.small}>{sortedExpenses.length} catatan</Text>
       </View>
       <View style={[styles.row, { marginBottom: 8 }]}>
         <Text style={styles.tiny}>Tanggal</Text>
         <Text style={styles.tiny}>Jumlah</Text>
       </View>
 
-      {expenses.map((e, i) => (
-        <View key={i} style={styles.recentRow}>
-          <View>
-            <Text style={styles.recentDate}>{pad(e.day)} Oktober 2026</Text>
-            <Text style={styles.tiny}>{e.note}</Text>
-          </View>
-          <Text style={styles.recentAmount}>{rupiah(e.amount)}</Text>
+      {sortedExpenses.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>Belum ada pengeluaran di amplop ini.</Text>
         </View>
-      ))}
+      ) : (
+        sortedExpenses.map((e, i) => (
+          <View key={e.id} style={styles.recentRow}>
+            <View>
+              <Text style={styles.recentDate}>{pad(e.day)} Okt</Text>
+              <Text style={styles.tiny}>{e.note}</Text>
+            </View>
+            <Text style={styles.recentAmount}>{rupiah(e.amount)}</Text>
+          </View>
+        ))
+      )}
 
       {/* CTA: tambah pengeluaran untuk amplop ini */}
       <Pressable
         style={styles.cta}
         onPress={() =>
-          router.push({ pathname: "/tambah-pengeluaran", params: { category: amplop.id } })
+          router.push({ pathname: "/tambah-pengeluaran", params: { category: String(amplop.id) } })
         }
       >
         <Text style={styles.ctaText}>Tambah pengeluaran</Text>
@@ -125,4 +234,12 @@ const styles = StyleSheet.create({
 
   cta: { height: 48, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginTop: 24 },
   ctaText: { fontSize: 14, fontWeight: "700", color: colors.white },
+
+  center: { alignItems: "center", justifyContent: "center", paddingVertical: 60 },
+  errorText: { fontSize: 13, color: colors.danger, textAlign: "center", marginBottom: 12 },
+  back: { marginTop: 16 },
+  backText: { fontSize: 14, color: colors.primary, fontWeight: "600" },
+
+  empty: { alignItems: "center", paddingVertical: 30 },
+  emptyText: { fontSize: 13, color: colors.muted },
 });

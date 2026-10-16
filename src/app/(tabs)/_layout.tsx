@@ -6,12 +6,12 @@ import { colors } from "../../components/uangku";
 type IconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
 const tab = (title: string, name: IconName) => ({
-  tabBarLabel: ({ focused, color }: { focused: boolean; color: string }) => (
+  tabBarLabel: ({ focused, color }: any) => (
     <Text style={{ fontSize: 10, color, fontWeight: focused ? "700" : "400" }}>
       {title}
     </Text>
   ),
-  tabBarIcon: ({ color }: { color: string }) => (
+  tabBarIcon: ({ color }: any) => (
     <MaterialIcons name={name} size={22} color={color} />
   ),
 });
