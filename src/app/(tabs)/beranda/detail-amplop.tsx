@@ -1,3 +1,4 @@
+
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -9,6 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
+
 import { IconCircle, ProgressBar, colors } from "@/components/uangku";
 import { num, pad, rupiah } from "@/data/amplop";
 import { getIcon } from "@/data/icons";
@@ -45,10 +47,17 @@ export default function DetailAmplopScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      if (!id) return;
+
+    async function fetchDetail() {
+      if (!id) {
+        setError("ID amplop tidak ditemukan.");
+        setLoading(false);
+        return;
+      }
+
       try {
         const data = await amplopService.get(Number(id));
+
         if (!cancelled) {
           setAmplop({
             id: data.amplop.id,
@@ -60,6 +69,7 @@ export default function DetailAmplopScreen() {
             terpakai: num(data.amplop.terpakai),
             sisa: num(data.amplop.sisa ?? data.amplop.budget),
           });
+
           setExpenses(
             (data.expenses || []).map((e: any) => ({
               id: e.id,
@@ -74,13 +84,20 @@ export default function DetailAmplopScreen() {
       } catch (err: any) {
         if (!cancelled) {
           setError(
-            err?.data?.message || err?.message || "Gagal memuat detail amplop."
+            err?.data?.message ||
+              err?.message ||
+              "Gagal memuat detail amplop."
           );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    })();
+    }
+
+    fetchDetail();
+
     return () => {
       cancelled = true;
     };
@@ -88,9 +105,15 @@ export default function DetailAmplopScreen() {
 
   if (loading) {
     return (
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator
+            size="large"
+            color={colors.primary}
+          />
         </View>
       </ScrollView>
     );
@@ -98,12 +121,19 @@ export default function DetailAmplopScreen() {
 
   if (error || !amplop) {
     return (
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.center}>
           <Text style={styles.errorText}>
             {error || "Data amplop tidak ditemukan."}
           </Text>
-          <Pressable style={styles.back} onPress={() => router.back()}>
+
+          <Pressable
+            style={styles.back}
+            onPress={() => router.back()}
+          >
             <Text style={styles.backText}>Kembali</Text>
           </Pressable>
         </View>
@@ -111,136 +141,401 @@ export default function DetailAmplopScreen() {
     );
   }
 
-  const budget = num(amplop?.budget);
-  const used = num(amplop?.terpakai);
-  const sisa = num(amplop?.sisa ?? budget - used);
-  const percent = budget ? (used / budget) * 100 : 0;
+  const budget = num(amplop.budget);
+  const used = num(amplop.terpakai);
+  const sisa = num(amplop.sisa ?? budget - used);
+  const percent = budget > 0 ? (used / budget) * 100 : 0;
+
   const sortedExpenses = [...expenses].sort(
-    (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+    (a, b) =>
+      new Date(b.tanggal).getTime() -
+      new Date(a.tanggal).getTime()
   );
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={18} color={colors.text} />
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <MaterialIcons
+            name="arrow-back"
+            size={18}
+            color={colors.text}
+          />
         </Pressable>
-        <Text style={styles.headerTitle}>Detail Amplop</Text>
+
+        <Text style={styles.headerTitle}>
+          Detail Amplop
+        </Text>
       </View>
 
       {/* Info amplop */}
       <View style={styles.infoRow}>
-        <View style={[styles.iconBox, { backgroundColor: amplop.bg }]}>
+        <View
+          style={[
+            styles.iconBox,
+            { backgroundColor: amplop.bg },
+          ]}
+        >
           <IconCircle source={getIcon(amplop.icon)} />
         </View>
+
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{amplop.name}</Text>
-          <Text style={styles.small}>{amplop.desc}</Text>
+          <Text style={styles.name}>
+            {amplop.name}
+          </Text>
+          <Text style={styles.small}>
+            {amplop.desc}
+          </Text>
         </View>
       </View>
 
+      {/* Periode */}
       <Pressable style={styles.pill}>
-        <MaterialIcons name="calendar-today" size={13} color={colors.muted} />
-        <Text style={styles.pillText}>Oktober 2026</Text>
-        <MaterialIcons name="keyboard-arrow-down" size={16} color={colors.muted} />
+        <MaterialIcons
+          name="calendar-today"
+          size={13}
+          color={colors.muted}
+        />
+
+        <Text style={styles.pillText}>
+          Oktober 2026
+        </Text>
+
+        <MaterialIcons
+          name="keyboard-arrow-down"
+          size={16}
+          color={colors.muted}
+        />
       </Pressable>
 
       {/* Kartu sisa uang */}
-      <View style={[styles.card, { backgroundColor: amplop.bg }]}>
-        <Text style={styles.cardLabel}>Sisa uang</Text>
-        <Text style={styles.remaining}>{rupiah(sisa)}</Text>
-        <Text style={styles.small}>Dari anggaran {rupiah(budget)}</Text>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: amplop.bg },
+        ]}
+      >
+        <Text style={styles.cardLabel}>
+          Sisa uang
+        </Text>
 
-        <View style={[styles.row, { marginTop: 16, marginBottom: 8 }]}>
-          <Text style={styles.usageLabel}>Pemakaian anggaran</Text>
-          <Text style={styles.percent}>{Math.round(percent)}%</Text>
+        <Text style={styles.remaining}>
+          {rupiah(sisa)}
+        </Text>
+
+        <Text style={styles.small}>
+          Dari anggaran {rupiah(budget)}
+        </Text>
+
+        <View style={styles.usageRow}>
+          <Text style={styles.usageLabel}>
+            Pemakaian anggaran
+          </Text>
+
+          <Text style={styles.percent}>
+            {Math.round(percent)}%
+          </Text>
         </View>
-        <ProgressBar percent={percent} height={8} />
-        <Text style={[styles.tiny, { marginTop: 10 }]}>
+
+        <ProgressBar
+          percent={percent}
+          height={8}
+        />
+
+        <Text style={styles.cardTiny}>
           {rupiah(used)} sudah terpakai
         </Text>
       </View>
 
       {/* Pengeluaran terbaru */}
-      <View style={[styles.row, styles.sectionHeader]}>
-        <Text style={styles.sectionTitle}>Pengeluaran terbaru</Text>
-        <Text style={styles.small}>{sortedExpenses.length} catatan</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>
+          Pengeluaran terbaru
+        </Text>
+
+        <Text style={styles.small}>
+          {sortedExpenses.length} catatan
+        </Text>
       </View>
-      <View style={[styles.row, { marginBottom: 8 }]}>
+
+      <View style={styles.tableHeader}>
         <Text style={styles.tiny}>Tanggal</Text>
         <Text style={styles.tiny}>Jumlah</Text>
       </View>
 
       {sortedExpenses.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>Belum ada pengeluaran di amplop ini.</Text>
+          <Text style={styles.emptyText}>
+            Belum ada pengeluaran di amplop ini.
+          </Text>
         </View>
       ) : (
-        sortedExpenses.map((e, i) => (
+        sortedExpenses.map((e) => (
           <View key={e.id} style={styles.recentRow}>
             <View>
-              <Text style={styles.recentDate}>{pad(e.day)} Okt</Text>
-              <Text style={styles.tiny}>{e.note}</Text>
+              <Text style={styles.recentDate}>
+                {pad(e.day)} Okt
+              </Text>
+
+              <Text style={styles.tiny}>
+                {e.note}
+              </Text>
             </View>
-            <Text style={styles.recentAmount}>{rupiah(e.amount)}</Text>
+
+            <Text style={styles.recentAmount}>
+              {rupiah(e.amount)}
+            </Text>
           </View>
         ))
       )}
 
-      {/* CTA: tambah pengeluaran untuk amplop ini */}
+      {/* Tambah pengeluaran */}
       <Pressable
         style={styles.cta}
         onPress={() =>
-          router.push({ pathname: "/tambah-pengeluaran", params: { category: String(amplop.id) } })
+          router.push({
+            pathname: "/tambah-pengeluaran",
+            params: {
+              category: String(amplop.id),
+            },
+          })
         }
       >
-        <Text style={styles.ctaText}>Tambah pengeluaran</Text>
+        <Text style={styles.ctaText}>
+          Tambah pengeluaran
+        </Text>
       </Pressable>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.white },
-  content: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 24 },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  screen: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
 
-  header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 },
-  backButton: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 16, fontWeight: "600", color: colors.text },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 56,
+    paddingBottom: 24,
+  },
 
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  iconBox: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  name: { fontSize: 22, fontWeight: "700", color: colors.text },
+  center: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
 
-  pill: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8, marginTop: 14, marginBottom: 16 },
-  pillText: { fontSize: 11, color: colors.text },
+  errorText: {
+    fontSize: 13,
+    color: colors.danger,
+    textAlign: "center",
+    marginBottom: 12,
+  },
 
-  card: { borderRadius: 20, padding: 16 },
-  cardLabel: { fontSize: 13, color: colors.muted },
-  remaining: { fontSize: 32, fontWeight: "700", color: colors.text, marginVertical: 4 },
-  usageLabel: { fontSize: 12, fontWeight: "600", color: colors.text },
-  percent: { fontSize: 15, fontWeight: "700", color: colors.primary },
+  back: {
+    marginTop: 16,
+  },
 
-  small: { fontSize: 12, color: colors.muted },
-  tiny: { fontSize: 10, color: colors.muted },
+  backText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: "600",
+  },
 
-  sectionHeader: { marginTop: 24, marginBottom: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
 
-  recentRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  recentDate: { fontSize: 12, color: colors.text, marginBottom: 4 },
-  recentAmount: { fontSize: 14, fontWeight: "700", color: colors.text },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 20,
+  },
 
-  cta: { height: 48, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginTop: 24 },
-  ctaText: { fontSize: 14, fontWeight: "700", color: colors.white },
+  backButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-  center: { alignItems: "center", justifyContent: "center", paddingVertical: 60 },
-  errorText: { fontSize: 13, color: colors.danger, textAlign: "center", marginBottom: 12 },
-  back: { marginTop: 16 },
-  backText: { fontSize: 14, color: colors.primary, fontWeight: "600" },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+  },
 
-  empty: { alignItems: "center", paddingVertical: 30 },
-  emptyText: { fontSize: 13, color: colors.muted },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  iconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  name: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.text,
+  },
+
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 14,
+    marginBottom: 16,
+  },
+
+  pillText: {
+    fontSize: 11,
+    color: colors.text,
+  },
+
+  card: {
+    borderRadius: 20,
+    padding: 16,
+  },
+
+  cardLabel: {
+    fontSize: 13,
+    color: colors.muted,
+  },
+
+  remaining: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: colors.text,
+    marginVertical: 4,
+  },
+
+  usageRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+
+  usageLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.text,
+  },
+
+  percent: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+
+  cardTiny: {
+    fontSize: 10,
+    color: colors.muted,
+    marginTop: 10,
+  },
+
+  small: {
+    fontSize: 12,
+    color: colors.muted,
+  },
+
+  tiny: {
+    fontSize: 10,
+    color: colors.muted,
+  },
+
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 24,
+    marginBottom: 12,
+  },
+
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+  },
+
+  tableHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+
+  recentRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+
+  recentDate: {
+    fontSize: 12,
+    color: colors.text,
+    marginBottom: 4,
+  },
+
+  recentAmount: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.text,
+  },
+
+  empty: {
+    alignItems: "center",
+    paddingVertical: 30,
+  },
+
+  emptyText: {
+    fontSize: 13,
+    color: colors.muted,
+  },
+
+  cta: {
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 24,
+  },
+
+  ctaText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.white,
+  },
 });

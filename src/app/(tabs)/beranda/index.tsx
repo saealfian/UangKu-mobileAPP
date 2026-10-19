@@ -1,3 +1,4 @@
+
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -9,6 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
+
 import { IconCircle, ProgressBar, colors } from "@/components/uangku";
 import { num, rupiah } from "@/data/amplop";
 import { getIcon } from "@/data/icons";
@@ -37,12 +39,14 @@ export default function BerandaScreen() {
     totalTerpakai: number;
     sisa: number;
   } | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    async function fetchDashboard() {
       try {
         const [amplopRes, summaryRes] = await Promise.all([
           amplopService.list(),
@@ -50,16 +54,19 @@ export default function BerandaScreen() {
         ]);
 
         if (!cancelled) {
-          setAmplopList((amplopRes.amplop || []).map((a: any) => ({
-            id: a.id,
-            name: a.name,
-            desc: a.desc,
-            budget: num(a.budget),
-            bg: a.bg || colors.mint,
-            icon: a.icon,
-            terpakai: num(a.terpakai),
-            sisa: num(a.sisa),
-          })));
+          setAmplopList(
+            (amplopRes.amplop || []).map((a: any) => ({
+              id: a.id,
+              name: a.name,
+              desc: a.desc,
+              budget: num(a.budget),
+              bg: a.bg || colors.mint,
+              icon: a.icon,
+              terpakai: num(a.terpakai),
+              sisa: num(a.sisa),
+            }))
+          );
+
           setSummary({
             totalAnggaran: num(summaryRes.totalAnggaran),
             totalTerpakai: num(summaryRes.totalTerpakai),
@@ -75,9 +82,14 @@ export default function BerandaScreen() {
           );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    })();
+    }
+
+    fetchDashboard();
+
     return () => {
       cancelled = true;
     };
@@ -85,16 +97,33 @@ export default function BerandaScreen() {
 
   const totalAnggaran = summary
     ? num(summary.totalAnggaran)
-    : num(amplopList.reduce((t, a) => t + num(a.budget), 0));
+    : num(
+        amplopList.reduce(
+          (total, item) => total + num(item.budget),
+          0
+        )
+      );
+
   const totalTerpakai = summary
     ? num(summary.totalTerpakai)
-    : num(amplopList.reduce((t, a) => t + num(a.terpakai), 0));
+    : num(
+        amplopList.reduce(
+          (total, item) => total + num(item.terpakai),
+          0
+        )
+      );
 
   if (loading) {
     return (
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator
+            size="large"
+            color={colors.primary}
+          />
           <Text style={styles.small}>Memuat data...</Text>
         </View>
       </ScrollView>
@@ -103,15 +132,19 @@ export default function BerandaScreen() {
 
   if (error) {
     return (
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
+
           <Pressable
             style={styles.retry}
             onPress={() => {
               setLoading(true);
               setError("");
-              void router.replace("/beranda");
+              router.replace("/beranda");
             }}
           >
             <Text style={styles.retryText}>Coba lagi</Text>
@@ -122,18 +155,28 @@ export default function BerandaScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+    >
       {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.brand}>UangKu</Text>
+
           <Text style={styles.greeting}>
             Halo, {user?.nama ? user.nama : "User"}!
           </Text>
         </View>
-        <Pressable style={styles.avatar} onPress={() => router.push("/profil")}>
+
+        <Pressable
+          style={styles.avatar}
+          onPress={() => router.push("/profil")}
+        >
           <Text style={styles.avatarText}>
-            {user?.nama ? user.nama.charAt(0).toUpperCase() : "U"}
+            {user?.nama
+              ? user.nama.charAt(0).toUpperCase()
+              : "U"}
           </Text>
         </Pressable>
       </View>
@@ -144,17 +187,30 @@ export default function BerandaScreen() {
           <Text style={styles.small}>Total Bulan Ini</Text>
           <Text style={styles.small}>Oktober 2026</Text>
         </View>
-        <Text style={styles.total}>{rupiah(totalAnggaran - totalTerpakai)}</Text>
-        <Text style={styles.small}>Sisa uang bulan ini</Text>
+
+        <Text style={styles.total}>
+          {rupiah(totalAnggaran - totalTerpakai)}
+        </Text>
+
+        <Text style={styles.small}>
+          Sisa uang bulan ini
+        </Text>
+
         <View style={styles.divider} />
+
         <View style={styles.row}>
           <View>
             <Text style={styles.tiny}>Total anggaran</Text>
-            <Text style={styles.summaryValue}>{rupiah(totalAnggaran)}</Text>
+            <Text style={styles.summaryValue}>
+              {rupiah(totalAnggaran)}
+            </Text>
           </View>
+
           <View style={{ alignItems: "flex-end" }}>
             <Text style={styles.tiny}>Sudah terpakai</Text>
-            <Text style={styles.summaryValue}>{rupiah(totalTerpakai)}</Text>
+            <Text style={styles.summaryValue}>
+              {rupiah(totalTerpakai)}
+            </Text>
           </View>
         </View>
       </View>
@@ -162,19 +218,26 @@ export default function BerandaScreen() {
       {/* Amplop */}
       <View style={[styles.row, styles.sectionHeader]}>
         <Text style={styles.sectionTitle}>Amplop kamu</Text>
-        <Text style={styles.small}>{amplopList.length} amplop</Text>
+
+        <Text style={styles.small}>
+          {amplopList.length} amplop
+        </Text>
       </View>
 
       <View style={styles.grid}>
         {amplopList.map((a) => {
           const used = num(a.terpakai);
           const budget = num(a.budget);
+
           return (
             <Pressable
               key={a.id}
               style={({ pressed }) => [
                 styles.card,
-                { backgroundColor: a.bg, opacity: pressed ? 0.8 : 1 },
+                {
+                  backgroundColor: a.bg,
+                  opacity: pressed ? 0.8 : 1,
+                },
               ]}
               onPress={() =>
                 router.push({
@@ -185,12 +248,32 @@ export default function BerandaScreen() {
             >
               <View style={styles.row}>
                 <IconCircle source={getIcon(a.icon)} />
-                <MaterialIcons name="north-east" size={14} color={colors.muted} />
+
+                <MaterialIcons
+                  name="north-east"
+                  size={14}
+                  color={colors.muted}
+                />
               </View>
-              <Text style={styles.cardName}>{a.name}</Text>
-              <Text style={styles.cardAmount}>{rupiah(budget)}</Text>
-              <ProgressBar percent={budget ? (used / budget) * 100 : 0} height={4} />
-              <Text style={styles.tiny}>{rupiah(used)} terpakai</Text>
+
+              <Text style={styles.cardName}>
+                {a.name}
+              </Text>
+
+              <Text style={styles.cardAmount}>
+                {rupiah(budget)}
+              </Text>
+
+              <ProgressBar
+                percent={
+                  budget > 0 ? (used / budget) * 100 : 0
+                }
+                height={4}
+              />
+
+              <Text style={styles.tiny}>
+                {rupiah(used)} terpakai
+              </Text>
             </Pressable>
           );
         })}
@@ -198,44 +281,175 @@ export default function BerandaScreen() {
 
       {/* Footer tip */}
       <View style={styles.tip}>
-        <MaterialIcons name="eco" size={14} color={colors.primary} />
-        <Text style={styles.small}>Sedikit dicatat, uang lebih terjaga.</Text>
+        <MaterialIcons
+          name="eco"
+          size={14}
+          color={colors.primary}
+        />
+
+        <Text style={styles.small}>
+          Sedikit dicatat, uang lebih terjaga.
+        </Text>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.white },
-  content: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 24 },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  screen: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
 
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  brand: { fontSize: 12, fontWeight: "600", color: colors.primary },
-  greeting: { fontSize: 24, fontWeight: "700", color: colors.text },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.mint, alignItems: "center", justifyContent: "center" },
-  avatarText: { fontSize: 14, fontWeight: "600", color: colors.primary },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 56,
+    paddingBottom: 24,
+  },
 
-  summary: { backgroundColor: colors.mint, borderRadius: 20, padding: 16 },
-  total: { fontSize: 32, fontWeight: "700", color: colors.text, marginTop: 8 },
-  divider: { height: 1, backgroundColor: "rgba(0,0,0,0.08)", marginVertical: 12 },
-  summaryValue: { fontSize: 13, fontWeight: "700", color: colors.text },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
 
-  small: { fontSize: 12, color: colors.muted },
-  tiny: { fontSize: 10, color: colors.muted },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
 
-  sectionHeader: { marginTop: 24, marginBottom: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
+  brand: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary,
+  },
 
-  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 },
-  card: { width: "48.5%", borderRadius: 16, padding: 12, gap: 6 },
-  cardName: { fontSize: 12, color: colors.text, marginTop: 8 },
-  cardAmount: { fontSize: 17, fontWeight: "700", color: colors.text },
+  greeting: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: colors.text,
+  },
 
-  tip: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 20 },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.mint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-  center: { alignItems: "center", justifyContent: "center", paddingVertical: 60 },
-  errorText: { fontSize: 13, color: colors.danger, textAlign: "center", marginBottom: 12 },
-  retry: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
-  retryText: { fontSize: 12, fontWeight: "600", color: colors.text },
+  avatarText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+
+  summary: {
+    backgroundColor: colors.mint,
+    borderRadius: 20,
+    padding: 16,
+  },
+
+  total: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: colors.text,
+    marginTop: 8,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(0,0,0,0.08)",
+    marginVertical: 12,
+  },
+
+  summaryValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.text,
+  },
+
+  small: {
+    fontSize: 12,
+    color: colors.muted,
+  },
+
+  tiny: {
+    fontSize: 10,
+    color: colors.muted,
+  },
+
+  sectionHeader: {
+    marginTop: 24,
+    marginBottom: 12,
+  },
+
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+  },
+
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 12,
+  },
+
+  card: {
+    width: "48.5%",
+    borderRadius: 16,
+    padding: 12,
+    gap: 6,
+  },
+
+  cardName: {
+    fontSize: 12,
+    color: colors.text,
+    marginTop: 8,
+  },
+
+  cardAmount: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: colors.text,
+  },
+
+  tip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 20,
+  },
+
+  center: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+
+  errorText: {
+    fontSize: 13,
+    color: colors.danger,
+    textAlign: "center",
+    marginBottom: 12,
+  },
+
+  retry: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  retryText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.text,
+  },
 });
