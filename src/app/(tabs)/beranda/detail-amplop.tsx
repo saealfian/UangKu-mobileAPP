@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { IconCircle, ProgressBar, colors } from "@/components/uangku";
-import { pad, rupiah } from "@/data/amplop";
+import { num, pad, rupiah } from "@/data/amplop";
 import { getIcon } from "@/data/icons";
 import { amplopService } from "@/api/amplop";
 
@@ -54,18 +54,18 @@ export default function DetailAmplopScreen() {
             id: data.amplop.id,
             name: data.amplop.name,
             desc: data.amplop.desc,
-            budget: data.amplop.budget,
+            budget: num(data.amplop.budget),
             bg: data.amplop.bg || colors.mint,
             icon: data.amplop.icon,
-            terpakai: data.amplop.terpakai,
-            sisa: data.amplop.sisa,
+            terpakai: num(data.amplop.terpakai),
+            sisa: num(data.amplop.sisa ?? data.amplop.budget),
           });
           setExpenses(
             (data.expenses || []).map((e: any) => ({
               id: e.id,
               day: e.day,
               note: e.note,
-              amount: e.amount,
+              amount: num(e.amount),
               tanggal: e.tanggal,
               createdAt: e.createdAt,
             }))
@@ -111,9 +111,10 @@ export default function DetailAmplopScreen() {
     );
   }
 
-  const used = amplop.terpakai ?? 0;
-  const sisa = amplop.sisa ?? amplop.budget - used;
-  const percent = amplop.budget ? (used / amplop.budget) * 100 : 0;
+  const budget = num(amplop?.budget);
+  const used = num(amplop?.terpakai);
+  const sisa = num(amplop?.sisa ?? budget - used);
+  const percent = budget ? (used / budget) * 100 : 0;
   const sortedExpenses = [...expenses].sort(
     (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
   );
@@ -149,7 +150,7 @@ export default function DetailAmplopScreen() {
       <View style={[styles.card, { backgroundColor: amplop.bg }]}>
         <Text style={styles.cardLabel}>Sisa uang</Text>
         <Text style={styles.remaining}>{rupiah(sisa)}</Text>
-        <Text style={styles.small}>Dari anggaran {rupiah(amplop.budget)}</Text>
+        <Text style={styles.small}>Dari anggaran {rupiah(budget)}</Text>
 
         <View style={[styles.row, { marginTop: 16, marginBottom: 8 }]}>
           <Text style={styles.usageLabel}>Pemakaian anggaran</Text>

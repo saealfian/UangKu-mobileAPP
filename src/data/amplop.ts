@@ -21,9 +21,15 @@ export type Amplop = {
   expenses?: Pengeluaran[];
 };
 
+// Paksa nilai dinamis dari backend menjadi angka aman.
+// Nilai null/undefined/NaN (mis. user baru tanpa data) jadi 0,
+// supaya tampilan selalu "Rp0" dan backend bebas mengirim field kosong.
+export const num = (v: unknown): number =>
+  typeof v === "number" && Number.isFinite(v) ? v : 0;
+
 // Helper formatting (digunakan kembali di layar frontend)
 export const rupiah = (n: number) =>
-  "Rp" + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  "Rp" + String(num(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 export const pad = (d: number) => String(d).padStart(2, "0");
 export const terpakai = (a: Amplop) =>
   (a.expenses?.reduce((t, e) => t + e.amount, 0) ?? a.terpakai ?? 0);

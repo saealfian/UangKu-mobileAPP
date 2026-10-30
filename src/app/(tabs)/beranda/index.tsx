@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { IconCircle, ProgressBar, colors } from "@/components/uangku";
-import { rupiah } from "@/data/amplop";
+import { num, rupiah } from "@/data/amplop";
 import { getIcon } from "@/data/icons";
 import { amplopService } from "@/api/amplop";
 import { dashboardService } from "@/api/dashboard";
@@ -54,16 +54,16 @@ export default function BerandaScreen() {
             id: a.id,
             name: a.name,
             desc: a.desc,
-            budget: a.budget,
+            budget: num(a.budget),
             bg: a.bg || colors.mint,
             icon: a.icon,
-            terpakai: a.terpakai,
-            sisa: a.sisa,
+            terpakai: num(a.terpakai),
+            sisa: num(a.sisa),
           })));
           setSummary({
-            totalAnggaran: summaryRes.totalAnggaran,
-            totalTerpakai: summaryRes.totalTerpakai,
-            sisa: summaryRes.sisa,
+            totalAnggaran: num(summaryRes.totalAnggaran),
+            totalTerpakai: num(summaryRes.totalTerpakai),
+            sisa: num(summaryRes.sisa),
           });
         }
       } catch (err: any) {
@@ -84,11 +84,11 @@ export default function BerandaScreen() {
   }, []);
 
   const totalAnggaran = summary
-    ? summary.totalAnggaran
-    : amplopList.reduce((t, a) => t + a.budget, 0);
+    ? num(summary.totalAnggaran)
+    : num(amplopList.reduce((t, a) => t + num(a.budget), 0));
   const totalTerpakai = summary
-    ? summary.totalTerpakai
-    : amplopList.reduce((t, a) => t + (a.terpakai ?? 0), 0);
+    ? num(summary.totalTerpakai)
+    : num(amplopList.reduce((t, a) => t + num(a.terpakai), 0));
 
   if (loading) {
     return (
@@ -167,7 +167,8 @@ export default function BerandaScreen() {
 
       <View style={styles.grid}>
         {amplopList.map((a) => {
-          const used = a.terpakai ?? 0;
+          const used = num(a.terpakai);
+          const budget = num(a.budget);
           return (
             <Pressable
               key={a.id}
@@ -187,8 +188,8 @@ export default function BerandaScreen() {
                 <MaterialIcons name="north-east" size={14} color={colors.muted} />
               </View>
               <Text style={styles.cardName}>{a.name}</Text>
-              <Text style={styles.cardAmount}>{rupiah(a.budget)}</Text>
-              <ProgressBar percent={(used / a.budget) * 100} height={4} />
+              <Text style={styles.cardAmount}>{rupiah(budget)}</Text>
+              <ProgressBar percent={budget ? (used / budget) * 100 : 0} height={4} />
               <Text style={styles.tiny}>{rupiah(used)} terpakai</Text>
             </Pressable>
           );

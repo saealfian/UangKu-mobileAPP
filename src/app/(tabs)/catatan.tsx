@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { colors } from "@/components/uangku";
-import { pad, rupiah } from "@/data/amplop";
+import { num, pad, rupiah } from "@/data/amplop";
 import { pengeluaranService } from "@/api/pengeluaran";
 
 type Expense = {
@@ -37,7 +37,7 @@ export default function CatatanScreen() {
               id: e.id,
               day: e.day,
               note: e.note,
-              amount: e.amount,
+              amount: num(e.amount),
               category: e.category || "-",
               tanggal: e.tanggal,
             }))
@@ -58,7 +58,7 @@ export default function CatatanScreen() {
     };
   }, [bulan, tahun]);
 
-  const total = pengeluaranList.reduce((t, e) => t + e.amount, 0);
+  const total = num(pengeluaranList.reduce((t, e) => t + num(e.amount), 0));
 
   if (loading) {
     return (
