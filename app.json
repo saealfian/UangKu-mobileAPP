@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "UangKu",
+    "slug": "uangku",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/uangku-icon.png",
+    "scheme": "uangku",
+    "userInterfaceStyle": "light",
+    "primaryColor": "#2E6B4F",
+    "backgroundColor": "#FFFFFF",
+    "ios": {
+      "icon": "./assets/images/uangku-icon.png",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.uangku.app"
+    },
+    "android": {
+      "package": "com.uangku.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/uangku-adaptive.png",
+        "backgroundColor": "#F9F7EA"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/uangku-favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F9F7EA",
+          "image": "./assets/images/uangku-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain"
+        }
+      ]
+    ]
+  }
+}
