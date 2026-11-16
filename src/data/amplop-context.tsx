@@ -1,5 +1,5 @@
 import { ReactNode, createContext, useContext, useMemo, useState } from "react";
-import { Amplop, Pengeluaran, amplopList } from "./amplop";
+import { Amplop, Pengeluaran } from "./amplop";
 
 type PengeluaranDenganKategori = Pengeluaran & { category: string };
 
@@ -14,12 +14,12 @@ const AmplopContext = createContext<AmplopContextType | null>(null);
 // Penyimpan data bersama untuk semua halaman.
 // Data masih di memori: hilang kalau aplikasi di-reload.
 export function AmplopProvider({ children }: { children: ReactNode }) {
-  const [amplop, setAmplop] = useState<Amplop[]>(amplopList);
+  const [amplop, setAmplop] = useState<Amplop[]>([]);
 
   const tambahPengeluaran = (amplopId: string, data: Pengeluaran) => {
     setAmplop((prev) =>
       prev.map((a) =>
-        a.id === amplopId ? { ...a, expenses: [data, ...a.expenses] } : a
+        String(a.id) === amplopId ? { ...a, expenses: [data, ...(a.expenses ?? [])] } : a
       )
     );
   };
@@ -28,7 +28,7 @@ export function AmplopProvider({ children }: { children: ReactNode }) {
   const semuaPengeluaran = useMemo(
     () =>
       amplop
-        .flatMap((a) => a.expenses.map((e) => ({ ...e, category: a.name })))
+        .flatMap((a) => (a.expenses ?? []).map((e) => ({ ...e, category: a.name })))
         .sort((x, y) => y.day - x.day),
     [amplop]
   );
