@@ -3,6 +3,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AmplopProvider } from "@/data/amplop-context";
+import { AkunProvider } from "@/data/akun-context";
 
 // Tahan splash screen sampai status login selesai diperiksa,
 // supaya aplikasi tidak sempat menampilkan layar kosong.
@@ -34,17 +35,19 @@ function AppStack() {
   if (!ready) return null;
 
   return (
-    <AmplopProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="tambah-pengeluaran"
-          options={{ presentation: "modal" }}
-        />
-      </Stack>
-    </AmplopProvider>
+    <AkunProvider>
+      <AmplopProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="login" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="tambah-pengeluaran"
+            options={{ presentation: "modal" }}
+          />
+        </Stack>
+      </AmplopProvider>
+    </AkunProvider>
   );
 }
 

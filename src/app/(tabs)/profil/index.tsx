@@ -1,39 +1,56 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { useRouter } from "expo-router";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { colors } from "@/components/uangku";
+import { useAkun } from "@/data/akun-context";
 import { useAuth } from "@/context/AuthContext";
 
 type IconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
 // Warna khas layar ini mengikuti desain (hasil sampling piksel):
 const menuGreen = "#39785E";
-const avatarGreen = "#337C65";
 const logoutCard = "#FBEFE4";
 const logoutRed = "#DF6A58";
 const chevronColor = "#DDE5E3";
 const dimmedIcon = "#8AA09C";
 
-const MENU: { icon: IconName; label: string; dimmed?: boolean }[] = [
-  { icon: "badge", label: "Informasi Akun" },
-  { icon: "track-changes", label: "Target Anggaran" },
-  { icon: "notifications-none", label: "Pengingat Pengeluaran" },
-  { icon: "lock-outline", label: "Keamanan Akun" },
-  { icon: "headset-mic", label: "Bantuan & Dukungan" },
-  { icon: "info-outline", label: "Tentang UangKu", dimmed: true },
+type MenuItem = {
+  icon: IconName;
+  label: string;
+  href: string;
+  dimmed?: boolean;
+};
+
+const MENU: MenuItem[] = [
+  { icon: "badge", label: "Informasi Akun", href: "/profil/informasi-akun" },
+  {
+    icon: "track-changes",
+    label: "Target Anggaran",
+    href: "/profil/target-anggaran",
+  },
+  {
+    icon: "notifications-none",
+    label: "Pengingat Pengeluaran",
+    href: "/profil/pengingat-pengeluaran",
+  },
+  { icon: "lock-outline", label: "Keamanan Akun", href: "/profil/keamanan-akun" },
+  { icon: "headset-mic", label: "Bantuan & Dukungan", href: "/profil/bantuan" },
+  {
+    icon: "info-outline",
+    label: "Tentang UangKu",
+    href: "/profil/tentang",
+    dimmed: true,
+  },
 ];
 
 export default function ProfilScreen() {
+  const router = useRouter();
   const { user, logout } = useAuth();
+  const { akun } = useAkun();
 
-  const comingSoon = (fitur: string) =>
-    Alert.alert(fitur, "Fitur ini segera hadir.");
+  const nama = akun.profil.nama || user?.nama || "User";
+  const email = akun.profil.email || user?.email || "-";
+  const inisial = nama.charAt(0).toUpperCase() || "U";
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -42,12 +59,14 @@ export default function ProfilScreen() {
       {/* Kartu identitas */}
       <View style={styles.card}>
         <View style={styles.profileRow}>
-          <View style={styles.avatar}>
-            <MaterialIcons name="person" size={34} color={colors.white} />
+          <View
+            style={[styles.avatar, { backgroundColor: akun.profil.warnaAvatar }]}
+          >
+            <Text style={styles.avatarText}>{inisial}</Text>
           </View>
           <View style={styles.identity}>
-            <Text style={styles.name}>{user?.nama || "User"}</Text>
-            <Text style={styles.email}>{user?.email || "-"}</Text>
+            <Text style={styles.name}>{nama}</Text>
+            <Text style={styles.email}>{email}</Text>
           </View>
         </View>
         <Pressable
@@ -55,7 +74,7 @@ export default function ProfilScreen() {
             styles.editBtn,
             { opacity: pressed ? 0.75 : 1 },
           ]}
-          onPress={() => comingSoon("Edit Profil")}
+          onPress={() => router.push("/profil/edit-profil")}
         >
           <MaterialIcons name="edit" size={13} color={menuGreen} />
           <Text style={styles.editText}>Edit Profil</Text>
@@ -71,7 +90,7 @@ export default function ProfilScreen() {
               styles.menuItem,
               { opacity: pressed ? 0.6 : 1 },
             ]}
-            onPress={() => comingSoon(m.label)}
+            onPress={() => router.push(m.href as never)}
           >
             <MaterialIcons
               name={m.icon}
@@ -79,11 +98,7 @@ export default function ProfilScreen() {
               color={m.dimmed ? dimmedIcon : menuGreen}
             />
             <Text style={styles.menuLabel}>{m.label}</Text>
-            <MaterialIcons
-              name="chevron-right"
-              size={22}
-              color={chevronColor}
-            />
+            <MaterialIcons name="chevron-right" size={22} color={chevronColor} />
           </Pressable>
         ))}
       </View>
@@ -125,9 +140,13 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: avatarGreen,
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarText: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: colors.white,
   },
   identity: { flex: 1, gap: 4 },
   name: { fontSize: 20, fontWeight: "700", color: colors.text },
