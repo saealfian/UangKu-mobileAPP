@@ -37,7 +37,7 @@ export default function TentangScreen() {
         {/* Kartu logo */}
         <View style={styles.card}>
           <Image
-            source={require("../../../../assets/images/uangku-icon.png")}
+            source={require("../../../../assets/images/icon1.png")}
             style={styles.logo}
             resizeMode="cover"
           />

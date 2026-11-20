@@ -4,13 +4,13 @@
     "slug": "uangku",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/uangku-icon.png",
+    "icon": "./assets/images/icon1.png",
     "scheme": "uangku",
     "userInterfaceStyle": "light",
     "primaryColor": "#2E6B4F",
     "backgroundColor": "#FFFFFF",
     "ios": {
-      "icon": "./assets/images/uangku-icon.png",
+      "icon": "./assets/images/icon1.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.uangku.app"
     },
@@ -18,7 +18,7 @@
       "package": "com.uangku.app",
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/uangku-adaptive.png",
+        "foregroundImage": "./assets/images/icon1.png",
         "backgroundColor": "#F9F7EA"
       },
       "predictiveBackGestureEnabled": false
@@ -33,7 +33,7 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#F9F7EA",
-          "image": "./assets/images/uangku-icon.png",
+          "image": "./assets/images/icon1.png",
           "imageWidth": 180,
           "resizeMode": "contain"
         }
