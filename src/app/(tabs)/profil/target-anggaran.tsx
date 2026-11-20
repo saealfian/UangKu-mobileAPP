@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,76 +21,36 @@ import {
   akunStyles,
 } from "@/components/akun";
 import { ProgressBar, colors } from "@/components/uangku";
-import { num, rupiah } from "@/data/amplop";
+import { num, pengeluaranPeriode, rupiah } from "@/data/amplop";
 import { useAkun } from "@/data/akun-context";
-import { amplopService } from "@/api/amplop";
-import { dashboardService } from "@/api/dashboard";
-
-type AmplopItem = { id: number; name: string; budget: number };
+import { useAmplop } from "@/data/amplop-context";
 
 const formatRibuan = (digits: string) =>
   digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "";
 
 export default function TargetAnggaranScreen() {
   const router = useRouter();
-  const { akun, ready, simpanTargetAnggaran } = useAkun();
+  const { akun, ready: akunReady, simpanTargetAnggaran } = useAkun();
+  const { amplop, pengeluaran, ready } = useAmplop();
 
   const now = new Date();
   const namaBulan = now.toLocaleDateString("id-ID", { month: "long" });
   const tahun = now.getFullYear();
+  const bulan = now.getMonth() + 1;
 
-  const [totalAnggaran, setTotalAnggaran] = useState(0);
-  const [terpakai, setTerpakai] = useState(0);
-  const [amplopList, setAmplopList] = useState<AmplopItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  // null = ikuti nilai tersimpan / total anggaran dari backend.
+  // null = ikuti nilai tersimpan / total anggaran amplop.
   const [draft, setDraft] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const [amplopRes, summaryRes] = await Promise.all([
-          amplopService.list(),
-          dashboardService.summary(),
-        ]);
-
-        if (cancelled) return;
-
-        setAmplopList(
-          (amplopRes.amplop || []).map((a: any) => ({
-            id: a.id,
-            name: a.name,
-            budget: num(a.budget),
-          }))
-        );
-        setTotalAnggaran(num(summaryRes.totalAnggaran));
-        setTerpakai(num(summaryRes.totalTerpakai));
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(
-            err?.data?.message ||
-              err?.message ||
-              "Data anggaran belum dapat dimuat."
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const totalAnggaran = amplop.reduce((t, a) => t + num(a.anggaran), 0);
+  const terpakai = pengeluaranPeriode(pengeluaran, bulan, tahun).reduce(
+    (t, p) => t + num(p.nominal),
+    0
+  );
 
   const nominalTersimpan = akun.targetAnggaran ?? totalAnggaran;
   const target =
     draft ??
-    (ready && nominalTersimpan ? formatRibuan(String(nominalTersimpan)) : "");
+    (akunReady && nominalTersimpan ? formatRibuan(String(nominalTersimpan)) : "");
 
   const targetNominal = Number(target.replace(/\D/g, "")) || 0;
   const persen = targetNominal > 0 ? (terpakai / targetNominal) * 100 : 0;
@@ -109,7 +69,7 @@ export default function TargetAnggaranScreen() {
     );
   };
 
-  if (loading) {
+  if (!ready || !akunReady) {
     return (
       <View style={[akunStyles.screen, akunStyles.center]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -150,8 +110,6 @@ export default function TargetAnggaranScreen() {
         </Text>
       </View>
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
-
       <AkunLabel>Target anggaran bulanan</AkunLabel>
       <View style={styles.inputRow}>
         <Text style={styles.inputPrefix}>Rp</Text>
@@ -174,15 +132,15 @@ export default function TargetAnggaranScreen() {
 
       <AkunSectionTitle>Alokasi per kategori</AkunSectionTitle>
 
-      {amplopList.length === 0 ? (
+      {amplop.length === 0 ? (
         <Text style={styles.empty}>
           Belum ada amplop. Tambahkan amplop dulu di Beranda.
         </Text>
       ) : (
-        amplopList.map((a) => (
+        amplop.map((a) => (
           <View key={a.id} style={styles.allocRow}>
-            <Text style={styles.allocName}>{a.name}</Text>
-            <Text style={styles.allocAmount}>{rupiah(a.budget)}</Text>
+            <Text style={styles.allocName}>{a.nama}</Text>
+            <Text style={styles.allocAmount}>{rupiah(a.anggaran)}</Text>
           </View>
         ))
       )}
@@ -216,12 +174,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: colors.primary,
-    marginTop: 12,
-  },
-
-  error: {
-    fontSize: 11,
-    color: colors.danger,
     marginTop: 12,
   },
 

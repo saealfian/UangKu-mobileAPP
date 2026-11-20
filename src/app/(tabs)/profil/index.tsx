@@ -3,14 +3,11 @@ import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { colors } from "@/components/uangku";
 import { useAkun } from "@/data/akun-context";
-import { useAuth } from "@/context/AuthContext";
 
 type IconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
 // Warna khas layar ini mengikuti desain (hasil sampling piksel):
 const menuGreen = "#39785E";
-const logoutCard = "#FBEFE4";
-const logoutRed = "#DF6A58";
 const chevronColor = "#DDE5E3";
 const dimmedIcon = "#8AA09C";
 
@@ -45,11 +42,10 @@ const MENU: MenuItem[] = [
 
 export default function ProfilScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
   const { akun } = useAkun();
 
-  const nama = akun.profil.nama || user?.nama || "User";
-  const email = akun.profil.email || user?.email || "-";
+  const nama = akun.profil.nama.trim() || "Pengguna";
+  const email = akun.profil.email || "Belum diisi";
   const inisial = nama.charAt(0).toUpperCase() || "U";
 
   return (
@@ -70,10 +66,7 @@ export default function ProfilScreen() {
           </View>
         </View>
         <Pressable
-          style={({ pressed }) => [
-            styles.editBtn,
-            { opacity: pressed ? 0.75 : 1 },
-          ]}
+          style={({ pressed }) => [styles.editBtn, { opacity: pressed ? 0.75 : 1 }]}
           onPress={() => router.push("/profil/edit-profil")}
         >
           <MaterialIcons name="edit" size={13} color={menuGreen} />
@@ -103,17 +96,12 @@ export default function ProfilScreen() {
         ))}
       </View>
 
-      {/* Keluar */}
-      <Pressable
-        style={({ pressed }) => [
-          styles.logoutCard,
-          { opacity: pressed ? 0.8 : 1 },
-        ]}
-        onPress={logout}
-      >
-        <MaterialIcons name="logout" size={20} color={logoutRed} />
-        <Text style={styles.logoutText}>Keluar</Text>
-      </Pressable>
+      <View style={styles.note}>
+        <MaterialIcons name="offline-bolt" size={16} color={colors.muted} />
+        <Text style={styles.noteText}>
+          Data UangKu tersimpan di perangkat ini dan bisa dipakai tanpa internet.
+        </Text>
+      </View>
     </ScrollView>
   );
 }
@@ -174,15 +162,11 @@ const styles = StyleSheet.create({
   },
   menuLabel: { flex: 1, fontSize: 14, color: colors.text },
 
-  logoutCard: {
+  note: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    backgroundColor: logoutCard,
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    gap: 8,
     marginTop: 24,
   },
-  logoutText: { fontSize: 15, fontWeight: "600", color: logoutRed },
+  noteText: { flex: 1, fontSize: 11, lineHeight: 17, color: colors.muted },
 });

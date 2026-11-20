@@ -8,7 +8,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAuth } from "@/context/AuthContext";
 
 const STORAGE_KEY = "uangku_akun_v1";
 
@@ -43,7 +42,7 @@ export type AkunState = {
 
 const DEFAULT_STATE: AkunState = {
   profil: {
-    nama: "",
+    nama: "Pengguna",
     email: "",
     telepon: "",
     tanggalLahir: "",
@@ -75,18 +74,10 @@ type AkunContextType = {
 
 const AkunContext = createContext<AkunContextType | null>(null);
 
-// Pengaturan akun disimpan di perangkat (AsyncStorage) karena backend
-// belum menyediakan endpoint profil/pengaturan untuk aplikasi ini.
+// Pengaturan akun disimpan di perangkat (AsyncStorage) karena aplikasi
+// berjalan offline tanpa akun server.
 export function AkunProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const [akun, setAkun] = useState<AkunState>(() => ({
-    ...DEFAULT_STATE,
-    profil: {
-      ...DEFAULT_STATE.profil,
-      nama: user?.nama ?? "",
-      email: user?.email ?? "",
-    },
-  }));
+  const [akun, setAkun] = useState<AkunState>(DEFAULT_STATE);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -102,7 +93,7 @@ export function AkunProvider({ children }: { children: ReactNode }) {
             profil: {
               ...prev.profil,
               ...profil,
-              // Jangan biarkan data kosong menimpa identitas akun login.
+              // Jangan biarkan data kosong menimpa nama/email tersimpan.
               nama: profil.nama || prev.profil.nama,
               email: profil.email || prev.profil.email,
             },

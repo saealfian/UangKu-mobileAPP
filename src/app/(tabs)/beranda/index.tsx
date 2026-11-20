@@ -1,7 +1,6 @@
-
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -12,161 +11,57 @@ import {
 } from "react-native";
 
 import { IconCircle, ProgressBar, colors } from "@/components/uangku";
-import { num, rupiah } from "@/data/amplop";
+import { useAkun } from "@/data/akun-context";
+import { namaBulan, num, pengeluaranPeriode, rupiah } from "@/data/amplop";
+import { useAmplop } from "@/data/amplop-context";
 import { getIcon } from "@/data/icons";
-import { amplopService } from "@/api/amplop";
-import { dashboardService } from "@/api/dashboard";
-import { useAuth } from "@/context/AuthContext";
-
-type AmplopItem = {
-  id: number;
-  name: string;
-  desc: string;
-  budget: number;
-  bg: string;
-  icon?: string;
-  terpakai?: number;
-  sisa?: number;
-};
 
 export default function BerandaScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { akun } = useAkun();
+  const { amplop, pengeluaran, ready } = useAmplop();
 
-  const [amplopList, setAmplopList] = useState<AmplopItem[]>([]);
-  const [summary, setSummary] = useState<{
-    totalAnggaran: number;
-    totalTerpakai: number;
-    sisa: number;
-  } | null>(null);
+  const sekarang = new Date();
+  const bulan = sekarang.getMonth() + 1;
+  const tahun = sekarang.getFullYear();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  // Ringkasan dihitung langsung dari data lokal yang tersimpan di perangkat.
+  const amplopList = useMemo(() => {
+    const bulanIni = pengeluaranPeriode(pengeluaran, bulan, tahun);
 
-  useEffect(() => {
-    let cancelled = false;
+    return amplop.map((a) => {
+      const terpakai = bulanIni
+        .filter((p) => p.amplopId === a.id)
+        .reduce((total, p) => total + num(p.nominal), 0);
 
-    async function fetchDashboard() {
-      try {
-        const [amplopRes, summaryRes] = await Promise.all([
-          amplopService.list(),
-          dashboardService.summary(),
-        ]);
+      return { ...a, terpakai, sisa: a.anggaran - terpakai };
+    });
+  }, [amplop, pengeluaran, bulan, tahun]);
 
-        if (!cancelled) {
-          setAmplopList(
-            (amplopRes.amplop || []).map((a: any) => ({
-              id: a.id,
-              name: a.name,
-              desc: a.desc,
-              budget: num(a.budget),
-              bg: a.bg || colors.mint,
-              icon: a.icon,
-              terpakai: num(a.terpakai),
-              sisa: num(a.sisa),
-            }))
-          );
+  const totalAnggaran = amplopList.reduce((total, a) => total + num(a.anggaran), 0);
+  const totalTerpakai = amplopList.reduce((total, a) => total + num(a.terpakai), 0);
 
-          setSummary({
-            totalAnggaran: num(summaryRes.totalAnggaran),
-            totalTerpakai: num(summaryRes.totalTerpakai),
-            sisa: num(summaryRes.sisa),
-          });
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(
-            err?.data?.message ||
-              err?.message ||
-              "Gagal memuat data beranda."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
+  const nama = akun.profil.nama.trim() || "Pengguna";
 
-    fetchDashboard();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const totalAnggaran = summary
-    ? num(summary.totalAnggaran)
-    : num(
-        amplopList.reduce(
-          (total, item) => total + num(item.budget),
-          0
-        )
-      );
-
-  const totalTerpakai = summary
-    ? num(summary.totalTerpakai)
-    : num(
-        amplopList.reduce(
-          (total, item) => total + num(item.terpakai),
-          0
-        )
-      );
-
-  if (loading) {
+  if (!ready) {
     return (
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-      >
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <View style={styles.center}>
-          <ActivityIndicator
-            size="large"
-            color={colors.primary}
-          />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.small}>Memuat data...</Text>
         </View>
       </ScrollView>
     );
   }
 
-  if (error) {
-    return (
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-      >
-        <View style={styles.center}>
-          <Text style={styles.errorText}>{error}</Text>
-
-          <Pressable
-            style={styles.retry}
-            onPress={() => {
-              setLoading(true);
-              setError("");
-              router.replace("/beranda");
-            }}
-          >
-            <Text style={styles.retryText}>Coba lagi</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    );
-  }
-
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-    >
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.brand}>UangKu</Text>
 
-          <Text style={styles.greeting}>
-            Halo, {user?.nama ? user.nama : "User"}!
-          </Text>
+          <Text style={styles.greeting}>Halo, {nama}!</Text>
         </View>
 
         <Pressable
@@ -174,9 +69,7 @@ export default function BerandaScreen() {
           onPress={() => router.push("/profil")}
         >
           <Text style={styles.avatarText}>
-            {user?.nama
-              ? user.nama.charAt(0).toUpperCase()
-              : "U"}
+            {nama.charAt(0).toUpperCase()}
           </Text>
         </Pressable>
       </View>
@@ -185,32 +78,28 @@ export default function BerandaScreen() {
       <View style={styles.summary}>
         <View style={styles.row}>
           <Text style={styles.small}>Total Bulan Ini</Text>
-          <Text style={styles.small}>Oktober 2026</Text>
+          <Text style={styles.small}>
+            {namaBulan(bulan)} {tahun}
+          </Text>
         </View>
 
         <Text style={styles.total}>
           {rupiah(totalAnggaran - totalTerpakai)}
         </Text>
 
-        <Text style={styles.small}>
-          Sisa uang bulan ini
-        </Text>
+        <Text style={styles.small}>Sisa uang bulan ini</Text>
 
         <View style={styles.divider} />
 
         <View style={styles.row}>
           <View>
             <Text style={styles.tiny}>Total anggaran</Text>
-            <Text style={styles.summaryValue}>
-              {rupiah(totalAnggaran)}
-            </Text>
+            <Text style={styles.summaryValue}>{rupiah(totalAnggaran)}</Text>
           </View>
 
           <View style={{ alignItems: "flex-end" }}>
             <Text style={styles.tiny}>Sudah terpakai</Text>
-            <Text style={styles.summaryValue}>
-              {rupiah(totalTerpakai)}
-            </Text>
+            <Text style={styles.summaryValue}>{rupiah(totalTerpakai)}</Text>
           </View>
         </View>
       </View>
@@ -219,15 +108,13 @@ export default function BerandaScreen() {
       <View style={[styles.row, styles.sectionHeader]}>
         <Text style={styles.sectionTitle}>Amplop kamu</Text>
 
-        <Text style={styles.small}>
-          {amplopList.length} amplop
-        </Text>
+        <Text style={styles.small}>{amplopList.length} amplop</Text>
       </View>
 
       <View style={styles.grid}>
         {amplopList.map((a) => {
           const used = num(a.terpakai);
-          const budget = num(a.budget);
+          const budget = num(a.anggaran);
 
           return (
             <Pressable
@@ -235,14 +122,14 @@ export default function BerandaScreen() {
               style={({ pressed }) => [
                 styles.card,
                 {
-                  backgroundColor: a.bg,
+                  backgroundColor: a.warna,
                   opacity: pressed ? 0.8 : 1,
                 },
               ]}
               onPress={() =>
                 router.push({
                   pathname: "/beranda/detail-amplop",
-                  params: { id: String(a.id) },
+                  params: { id: a.id },
                 })
               }
             >
@@ -256,24 +143,16 @@ export default function BerandaScreen() {
                 />
               </View>
 
-              <Text style={styles.cardName}>
-                {a.name}
-              </Text>
+              <Text style={styles.cardName}>{a.nama}</Text>
 
-              <Text style={styles.cardAmount}>
-                {rupiah(budget)}
-              </Text>
+              <Text style={styles.cardAmount}>{rupiah(budget)}</Text>
 
               <ProgressBar
-                percent={
-                  budget > 0 ? (used / budget) * 100 : 0
-                }
+                percent={budget > 0 ? (used / budget) * 100 : 0}
                 height={4}
               />
 
-              <Text style={styles.tiny}>
-                {rupiah(used)} terpakai
-              </Text>
+              <Text style={styles.tiny}>{rupiah(used)} terpakai</Text>
             </Pressable>
           );
         })}
@@ -281,11 +160,7 @@ export default function BerandaScreen() {
 
       {/* Footer tip */}
       <View style={styles.tip}>
-        <MaterialIcons
-          name="eco"
-          size={14}
-          color={colors.primary}
-        />
+        <MaterialIcons name="eco" size={14} color={colors.primary} />
 
         <Text style={styles.small}>
           Sedikit dicatat, uang lebih terjaga.
@@ -430,26 +305,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 60,
-  },
-
-  errorText: {
-    fontSize: 13,
-    color: colors.danger,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-
-  retry: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-
-  retryText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.text,
+    gap: 8,
   },
 });

@@ -1,7 +1,6 @@
-
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,13 +12,8 @@ import {
 } from "react-native";
 
 import { colors } from "@/components/uangku";
-import { amplopService } from "@/api/amplop";
-import { pengeluaranService } from "@/api/pengeluaran";
-
-type AmplopItem = {
-  id: number;
-  name: string;
-};
+import { tanggalHariIni } from "@/data/amplop";
+import { useAmplop } from "@/data/amplop-context";
 
 export default function TambahPengeluaranScreen() {
   const router = useRouter();
@@ -28,62 +22,22 @@ export default function TambahPengeluaranScreen() {
     category?: string;
   }>();
 
-  const [amplopList, setAmplopList] = useState<AmplopItem[]>([]);
-  const [selected, setSelected] = useState<number | null>(null);
+  const { amplop, tambahPengeluaran, ready } = useAmplop();
+
+  const [pilihan, setPilihan] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
+  // Amplop default: dari kategori yang dipilih di detail, atau amplop pertama.
+  const defaultId =
+    (category && amplop.some((a) => a.id === category) ? category : null) ??
+    amplop[0]?.id ??
+    null;
 
-    async function fetchAmplop() {
-      try {
-        const data = await amplopService.list();
+  const selected = pilihan ?? defaultId;
 
-        if (!cancelled) {
-          const list = (data.amplop || []).map((a: any) => ({
-            id: a.id,
-            name: a.name,
-          }));
-
-          setAmplopList(list);
-
-          const defaultId = category
-            ? Number(category)
-            : list[0]?.id ?? null;
-
-          setSelected(
-            list.find((a: AmplopItem) => a.id === defaultId)?.id ??
-              list[0]?.id ??
-              null
-          );
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(
-            err?.data?.message ||
-              err?.message ||
-              "Gagal memuat daftar amplop."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchAmplop();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [category]);
-
-  const handleSave = async () => {
+  const handleSave = () => {
     setError("");
 
     if (!selected) {
@@ -98,76 +52,46 @@ export default function TambahPengeluaranScreen() {
       return;
     }
 
-    setSaving(true);
+    // Tersimpan langsung di perangkat, tanpa koneksi internet.
+    tambahPengeluaran({
+      amplopId: selected,
+      catatan: note.trim() || "Pengeluaran",
+      nominal,
+      tanggal: tanggalHariIni(),
+    });
 
-    try {
-      await pengeluaranService.create({
-        amplop_id: selected,
-        catatan: note.trim() || "Pengeluaran",
-        nominal,
-      } as any);
-
-      router.back();
-    } catch (err: any) {
-      setError(
-        err?.data?.message ||
-          err?.message ||
-          "Gagal menyimpan pengeluaran."
-      );
-    } finally {
-      setSaving(false);
-    }
+    router.back();
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-    >
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <MaterialIcons
-            name="close"
-            size={18}
-            color={colors.text}
-          />
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <MaterialIcons name="close" size={18} color={colors.text} />
         </Pressable>
 
-        <Text style={styles.headerTitle}>
-          Tambah Pengeluaran
-        </Text>
+        <Text style={styles.headerTitle}>Tambah Pengeluaran</Text>
       </View>
 
       {/* Kategori */}
       <Text style={styles.label}>Kategori</Text>
 
-      {loading ? (
+      {!ready ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator
-            size="small"
-            color={colors.primary}
-          />
-          <Text style={styles.loadingText}>
-            Memuat kategori...
-          </Text>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={styles.loadingText}>Memuat kategori...</Text>
         </View>
       ) : (
         <View style={styles.chips}>
-          {amplopList.map((a) => {
+          {amplop.map((a) => {
             const active = a.id === selected;
 
             return (
               <Pressable
                 key={a.id}
-                onPress={() => setSelected(a.id)}
-                style={[
-                  styles.chip,
-                  active && styles.chipActive,
-                ]}
+                onPress={() => setPilihan(a.id)}
+                style={[styles.chip, active && styles.chipActive]}
               >
                 <Text
                   style={[
@@ -175,7 +99,7 @@ export default function TambahPengeluaranScreen() {
                     active && styles.chipTextActive,
                   ]}
                 >
-                  {a.name}
+                  {a.nama}
                 </Text>
               </Pressable>
             );
@@ -202,13 +126,7 @@ export default function TambahPengeluaranScreen() {
       <Text style={styles.label}>Catatan</Text>
 
       <TextInput
-        style={[
-          styles.input,
-          {
-            height: 90,
-            textAlignVertical: "top",
-          },
-        ]}
+        style={[styles.input, { height: 90, textAlignVertical: "top" }]}
         placeholder="Misal: makan siang"
         placeholderTextColor={colors.muted}
         multiline
@@ -217,35 +135,15 @@ export default function TambahPengeluaranScreen() {
       />
 
       {/* Error */}
-      {!!error && (
-        <Text style={styles.error}>
-          {error}
-        </Text>
-      )}
+      {!!error && <Text style={styles.error}>{error}</Text>}
 
       {/* Simpan */}
       <Pressable
-        style={[
-          styles.cta,
-          {
-            backgroundColor: saving
-              ? colors.muted
-              : colors.primary,
-          },
-        ]}
+        style={[styles.cta, { backgroundColor: colors.primary }]}
         onPress={handleSave}
-        disabled={saving || loading}
+        disabled={!ready}
       >
-        {saving ? (
-          <ActivityIndicator
-            size="small"
-            color="#FFFFFF"
-          />
-        ) : (
-          <Text style={styles.ctaText}>
-            Simpan
-          </Text>
-        )}
+        <Text style={styles.ctaText}>Simpan</Text>
       </Pressable>
     </ScrollView>
   );

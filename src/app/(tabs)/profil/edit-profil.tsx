@@ -153,7 +153,7 @@ function EditProfilForm({ awal }: { awal: ProfilData }) {
           autoCapitalize="none"
         />
         <Text style={styles.fieldHint}>
-          Email digunakan untuk masuk dan pemulihan akun.
+          Email hanya tersimpan di perangkat ini sebagai info profil.
         </Text>
 
         <AkunLabel>Nomor telepon</AkunLabel>

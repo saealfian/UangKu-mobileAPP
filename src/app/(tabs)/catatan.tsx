@@ -1,7 +1,6 @@
-
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -12,126 +11,56 @@ import {
 } from "react-native";
 
 import { colors } from "@/components/uangku";
-import { num, pad, rupiah } from "@/data/amplop";
-import { pengeluaranService } from "@/api/pengeluaran";
-
-type Expense = {
-  id: number;
-  day: number;
-  note: string;
-  amount: number;
-  category: string;
-  tanggal: string;
-};
+import {
+  hariDariIso,
+  namaBulan,
+  num,
+  pad,
+  pengeluaranPeriode,
+  rupiah,
+} from "@/data/amplop";
+import { useAmplop } from "@/data/amplop-context";
 
 export default function CatatanScreen() {
   const router = useRouter();
-
-  const [pengeluaranList, setPengeluaranList] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { amplop, pengeluaran, ready } = useAmplop();
 
   const now = new Date();
   const bulan = now.getMonth() + 1;
   const tahun = now.getFullYear();
 
-  const namaBulan = new Date(tahun, bulan - 1).toLocaleDateString(
-    "id-ID",
-    { month: "long" }
-  );
+  const labelBulan = namaBulan(bulan);
 
-  useEffect(() => {
-    let cancelled = false;
+  // Gabungkan pengeluaran dengan nama amplopnya, urut dari tanggal terbaru.
+  const pengeluaranList = useMemo(() => {
+    const namaAmplop = new Map(amplop.map((a) => [a.id, a.nama]));
 
-    async function fetchPengeluaran() {
-      try {
-        const data = await pengeluaranService.list({
-          bulan,
-          tahun,
-        });
+    return pengeluaranPeriode(pengeluaran, bulan, tahun)
+      .slice()
+      .sort((a, b) => b.tanggal.localeCompare(a.tanggal))
+      .map((e) => ({
+        id: e.id,
+        day: hariDariIso(e.tanggal),
+        note: e.catatan,
+        amount: num(e.nominal),
+        category: namaAmplop.get(e.amplopId) ?? "-",
+      }));
+  }, [amplop, pengeluaran, bulan, tahun]);
 
-        if (!cancelled) {
-          setPengeluaranList(
-            (data.pengeluaran || []).map((e: any) => ({
-              id: e.id,
-              day: e.day,
-              note: e.note,
-              amount: num(e.amount),
-              category: e.category || "-",
-              tanggal: e.tanggal,
-            }))
-          );
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(
-            err?.data?.message ||
-              err?.message ||
-              "Gagal memuat catatan."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
+  const total = pengeluaranList.reduce((t, e) => t + num(e.amount), 0);
 
-    fetchPengeluaran();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [bulan, tahun]);
-
-  const total = num(
-    pengeluaranList.reduce(
-      (t, e) => t + num(e.amount),
-      0
-    )
-  );
-
-  if (loading) {
+  if (!ready) {
     return (
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-      >
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <View style={styles.center}>
-          <ActivityIndicator
-            size="large"
-            color={colors.primary}
-          />
-        </View>
-      </ScrollView>
-    );
-  }
-
-  if (error) {
-    return (
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-      >
-        <View style={styles.center}>
-          <Text style={styles.errorText}>{error}</Text>
-
-          <Pressable
-            style={styles.retry}
-            onPress={() => router.replace("/catatan")}
-          >
-            <Text style={styles.retryText}>Coba lagi</Text>
-          </Pressable>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </ScrollView>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-    >
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* Judul */}
       <Text style={styles.title}>
         Catatan Pengeluaran{"\n"}Bulanan
@@ -147,7 +76,7 @@ export default function CatatanScreen() {
           />
 
           <Text style={styles.pillText}>
-            {namaBulan} {tahun}
+            {labelBulan} {tahun}
           </Text>
 
           <MaterialIcons
@@ -165,41 +94,28 @@ export default function CatatanScreen() {
       {/* Tabel pengeluaran */}
       <View style={styles.table}>
         <View style={[styles.tr, styles.thead]}>
-          <Text style={[styles.th, styles.colDate]}>
-            Tanggal
-          </Text>
+          <Text style={[styles.th, styles.colDate]}>Tanggal</Text>
 
-          <Text style={[styles.th, styles.colCat]}>
-            Kategori
-          </Text>
+          <Text style={[styles.th, styles.colCat]}>Kategori</Text>
 
-          <Text style={[styles.th, styles.colAmount]}>
-            Jumlah
-          </Text>
+          <Text style={[styles.th, styles.colAmount]}>Jumlah</Text>
         </View>
 
         {pengeluaranList.length === 0 ? (
           <View style={[styles.tr, styles.trBody]}>
-            <Text style={[styles.cell, styles.colDate]}>
-              -
-            </Text>
+            <Text style={[styles.cell, styles.colDate]}>-</Text>
 
             <Text style={[styles.cell, styles.colCat]}>
               Belum ada catatan
             </Text>
 
-            <Text style={[styles.cell, styles.colAmount]}>
-              -
-            </Text>
+            <Text style={[styles.cell, styles.colAmount]}>-</Text>
           </View>
         ) : (
           pengeluaranList.map((e) => (
-            <View
-              key={e.id}
-              style={[styles.tr, styles.trBody]}
-            >
+            <View key={e.id} style={[styles.tr, styles.trBody]}>
               <Text style={[styles.dateText, styles.colDate]}>
-                {pad(e.day)} {namaBulan.substring(0, 3)}
+                {pad(e.day)} {labelBulan.substring(0, 3)}
               </Text>
 
               <Text
@@ -218,13 +134,9 @@ export default function CatatanScreen() {
 
         {/* Total */}
         <View style={[styles.tr, styles.tfoot]}>
-          <Text style={styles.cell}>
-            Total bulan ini
-          </Text>
+          <Text style={styles.cell}>Total bulan ini</Text>
 
-          <Text style={styles.totalText}>
-            {rupiah(total)}
-          </Text>
+          <Text style={styles.totalText}>{rupiah(total)}</Text>
         </View>
       </View>
 
@@ -234,16 +146,10 @@ export default function CatatanScreen() {
           style={styles.fab}
           onPress={() => router.push("/tambah-pengeluaran")}
         >
-          <MaterialIcons
-            name="add"
-            size={28}
-            color={colors.white}
-          />
+          <MaterialIcons name="add" size={28} color={colors.white} />
         </Pressable>
 
-        <Text style={styles.addLabel}>
-          Tambah pengeluaran
-        </Text>
+        <Text style={styles.addLabel}>Tambah pengeluaran</Text>
       </View>
     </ScrollView>
   );
@@ -386,26 +292,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 60,
-  },
-
-  errorText: {
-    fontSize: 13,
-    color: colors.danger,
-    textAlign: "center",
-  },
-
-  retry: {
-    marginTop: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-
-  retryText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.text,
   },
 });

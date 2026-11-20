@@ -1,7 +1,6 @@
-
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -12,128 +11,53 @@ import {
 } from "react-native";
 
 import { IconCircle, ProgressBar, colors } from "@/components/uangku";
-import { num, pad, rupiah } from "@/data/amplop";
+import {
+  hariDariIso,
+  namaBulan,
+  num,
+  pad,
+  pengeluaranPeriode,
+  rupiah,
+} from "@/data/amplop";
+import { useAmplop } from "@/data/amplop-context";
 import { getIcon } from "@/data/icons";
-import { amplopService } from "@/api/amplop";
-
-type AmplopDetail = {
-  id: number;
-  name: string;
-  desc: string;
-  budget: number;
-  bg: string;
-  icon?: string;
-  terpakai?: number;
-  sisa?: number;
-};
-
-type Expense = {
-  id: number;
-  day: number;
-  note: string;
-  amount: number;
-  tanggal: string;
-  createdAt: string;
-};
 
 export default function DetailAmplopScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
+  const { amplop, pengeluaran, ready } = useAmplop();
 
-  const [amplop, setAmplop] = useState<AmplopDetail | null>(null);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const sekarang = new Date();
+  const bulan = sekarang.getMonth() + 1;
+  const tahun = sekarang.getFullYear();
 
-  useEffect(() => {
-    let cancelled = false;
+  const data = amplop.find((a) => a.id === id);
 
-    async function fetchDetail() {
-      if (!id) {
-        setError("ID amplop tidak ditemukan.");
-        setLoading(false);
-        return;
-      }
+  const expenses = useMemo(() => {
+    if (!data) return [];
 
-      try {
-        const data = await amplopService.get(Number(id));
+    return pengeluaranPeriode(pengeluaran, bulan, tahun)
+      .filter((p) => p.amplopId === data.id)
+      .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+  }, [data, pengeluaran, bulan, tahun]);
 
-        if (!cancelled) {
-          setAmplop({
-            id: data.amplop.id,
-            name: data.amplop.name,
-            desc: data.amplop.desc,
-            budget: num(data.amplop.budget),
-            bg: data.amplop.bg || colors.mint,
-            icon: data.amplop.icon,
-            terpakai: num(data.amplop.terpakai),
-            sisa: num(data.amplop.sisa ?? data.amplop.budget),
-          });
-
-          setExpenses(
-            (data.expenses || []).map((e: any) => ({
-              id: e.id,
-              day: e.day,
-              note: e.note,
-              amount: num(e.amount),
-              tanggal: e.tanggal,
-              createdAt: e.createdAt,
-            }))
-          );
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(
-            err?.data?.message ||
-              err?.message ||
-              "Gagal memuat detail amplop."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchDetail();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  if (loading) {
+  if (!ready) {
     return (
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-      >
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <View style={styles.center}>
-          <ActivityIndicator
-            size="large"
-            color={colors.primary}
-          />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </ScrollView>
     );
   }
 
-  if (error || !amplop) {
+  if (!data) {
     return (
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-      >
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <View style={styles.center}>
-          <Text style={styles.errorText}>
-            {error || "Data amplop tidak ditemukan."}
-          </Text>
+          <Text style={styles.errorText}>Data amplop tidak ditemukan.</Text>
 
-          <Pressable
-            style={styles.back}
-            onPress={() => router.back()}
-          >
+          <Pressable style={styles.back} onPress={() => router.back()}>
             <Text style={styles.backText}>Kembali</Text>
           </Pressable>
         </View>
@@ -141,58 +65,31 @@ export default function DetailAmplopScreen() {
     );
   }
 
-  const budget = num(amplop.budget);
-  const used = num(amplop.terpakai);
-  const sisa = num(amplop.sisa ?? budget - used);
+  const budget = num(data.anggaran);
+  const used = expenses.reduce((total, e) => total + num(e.nominal), 0);
+  const sisa = budget - used;
   const percent = budget > 0 ? (used / budget) * 100 : 0;
 
-  const sortedExpenses = [...expenses].sort(
-    (a, b) =>
-      new Date(b.tanggal).getTime() -
-      new Date(a.tanggal).getTime()
-  );
-
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-    >
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <MaterialIcons
-            name="arrow-back"
-            size={18}
-            color={colors.text}
-          />
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <MaterialIcons name="arrow-back" size={18} color={colors.text} />
         </Pressable>
 
-        <Text style={styles.headerTitle}>
-          Detail Amplop
-        </Text>
+        <Text style={styles.headerTitle}>Detail Amplop</Text>
       </View>
 
       {/* Info amplop */}
       <View style={styles.infoRow}>
-        <View
-          style={[
-            styles.iconBox,
-            { backgroundColor: amplop.bg },
-          ]}
-        >
-          <IconCircle source={getIcon(amplop.icon)} />
+        <View style={[styles.iconBox, { backgroundColor: data.warna }]}>
+          <IconCircle source={getIcon(data.icon)} />
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>
-            {amplop.name}
-          </Text>
-          <Text style={styles.small}>
-            {amplop.desc}
-          </Text>
+          <Text style={styles.name}>{data.nama}</Text>
+          <Text style={styles.small}>{data.deskripsi}</Text>
         </View>
       </View>
 
@@ -205,7 +102,7 @@ export default function DetailAmplopScreen() {
         />
 
         <Text style={styles.pillText}>
-          Oktober 2026
+          {namaBulan(bulan)} {tahun}
         </Text>
 
         <MaterialIcons
@@ -216,38 +113,20 @@ export default function DetailAmplopScreen() {
       </Pressable>
 
       {/* Kartu sisa uang */}
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: amplop.bg },
-        ]}
-      >
-        <Text style={styles.cardLabel}>
-          Sisa uang
-        </Text>
+      <View style={[styles.card, { backgroundColor: data.warna }]}>
+        <Text style={styles.cardLabel}>Sisa uang</Text>
 
-        <Text style={styles.remaining}>
-          {rupiah(sisa)}
-        </Text>
+        <Text style={styles.remaining}>{rupiah(sisa)}</Text>
 
-        <Text style={styles.small}>
-          Dari anggaran {rupiah(budget)}
-        </Text>
+        <Text style={styles.small}>Dari anggaran {rupiah(budget)}</Text>
 
         <View style={styles.usageRow}>
-          <Text style={styles.usageLabel}>
-            Pemakaian anggaran
-          </Text>
+          <Text style={styles.usageLabel}>Pemakaian anggaran</Text>
 
-          <Text style={styles.percent}>
-            {Math.round(percent)}%
-          </Text>
+          <Text style={styles.percent}>{Math.round(percent)}%</Text>
         </View>
 
-        <ProgressBar
-          percent={percent}
-          height={8}
-        />
+        <ProgressBar percent={percent} height={8} />
 
         <Text style={styles.cardTiny}>
           {rupiah(used)} sudah terpakai
@@ -256,13 +135,9 @@ export default function DetailAmplopScreen() {
 
       {/* Pengeluaran terbaru */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>
-          Pengeluaran terbaru
-        </Text>
+        <Text style={styles.sectionTitle}>Pengeluaran terbaru</Text>
 
-        <Text style={styles.small}>
-          {sortedExpenses.length} catatan
-        </Text>
+        <Text style={styles.small}>{expenses.length} catatan</Text>
       </View>
 
       <View style={styles.tableHeader}>
@@ -270,28 +145,25 @@ export default function DetailAmplopScreen() {
         <Text style={styles.tiny}>Jumlah</Text>
       </View>
 
-      {sortedExpenses.length === 0 ? (
+      {expenses.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>
             Belum ada pengeluaran di amplop ini.
           </Text>
         </View>
       ) : (
-        sortedExpenses.map((e) => (
+        expenses.map((e) => (
           <View key={e.id} style={styles.recentRow}>
             <View>
               <Text style={styles.recentDate}>
-                {pad(e.day)} Okt
+                {pad(hariDariIso(e.tanggal))}{" "}
+                {namaBulan(bulan).slice(0, 3)}
               </Text>
 
-              <Text style={styles.tiny}>
-                {e.note}
-              </Text>
+              <Text style={styles.tiny}>{e.catatan}</Text>
             </View>
 
-            <Text style={styles.recentAmount}>
-              {rupiah(e.amount)}
-            </Text>
+            <Text style={styles.recentAmount}>{rupiah(e.nominal)}</Text>
           </View>
         ))
       )}
@@ -302,15 +174,11 @@ export default function DetailAmplopScreen() {
         onPress={() =>
           router.push({
             pathname: "/tambah-pengeluaran",
-            params: {
-              category: String(amplop.id),
-            },
+            params: { category: data.id },
           })
         }
       >
-        <Text style={styles.ctaText}>
-          Tambah pengeluaran
-        </Text>
+        <Text style={styles.ctaText}>Tambah pengeluaran</Text>
       </Pressable>
     </ScrollView>
   );
@@ -349,12 +217,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     fontWeight: "600",
-  },
-
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
   },
 
   header: {

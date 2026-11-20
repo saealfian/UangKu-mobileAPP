@@ -84,12 +84,6 @@ export default function KeamananAkunScreen() {
 
         <AkunLabel>Akses &amp; verifikasi</AkunLabel>
 
-        <Text style={styles.groupLabel}>Kata sandi</Text>
-        <AkunRow
-          title="Ubah kata sandi"
-          onPress={() => router.push("/profil/ubah-kata-sandi")}
-        />
-
         <Text style={styles.groupLabel}>PIN aplikasi</Text>
         <AkunRow
           title={akun.keamanan.pin ? "Ubah PIN 6 digit" : "Buat PIN 6 digit"}
@@ -103,21 +97,15 @@ export default function KeamananAkunScreen() {
             value={akun.keamanan.biometrik}
             onValueChange={(v) => simpanKeamanan({ biometrik: v })}
           />
-          <AkunSwitchRow
-            title="Verifikasi dua langkah"
-            subtitle="Tambahkan kode verifikasi saat masuk."
-            value={akun.keamanan.duaLangkah}
-            onValueChange={(v) => simpanKeamanan({ duaLangkah: v })}
-          />
           <AkunRow
             title="Perangkat saat ini"
-            subtitle={`${perangkat} • Sesi aktif sekarang`}
+            subtitle={`${perangkat} • Data tersimpan di perangkat ini`}
             showChevron={false}
           />
         </View>
 
         <AkunNote>
-          Jangan bagikan kata sandi, PIN, atau kode verifikasi kepada siapa pun.
+          Jangan bagikan PIN aplikasi kepada siapa pun.
         </AkunNote>
       </ScrollView>
 

@@ -1,10 +1,6 @@
 import { Redirect } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
 
+// Aplikasi offline: tanpa login, langsung masuk ke Beranda.
 export default function Index() {
-  const { ready, user } = useAuth();
-
-  if (!ready) return null;
-
-  return <Redirect href={user ? "/beranda" : "/login"} />;
+  return <Redirect href="/beranda" />;
 }
